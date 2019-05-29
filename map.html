@@ -8,7 +8,7 @@
       /* Always set the map height explicitly to define the size of the div
        * element that contains the map. */
       #map {
-        height: 100%;
+        height: 80%;
       }
       /* Optional: Makes the sample page fill the window. */
       html, body {
@@ -16,37 +16,78 @@
         margin: 0;
         padding: 0;
       }
+      .search {
+        position: absolute;
+        bottom: 100px;
+        left: 42%;
+      }
     </style>
   </head>
   <body>
     <div id="map"></div>
+    <div class="search">
+      <input placeholder="Введіть локацію" id='input'></input>
+      <button onclick="getValue()">Пошук</button>
+    </div>
+    
     <script>
 
-      fetch('http://search.maps.sputnik.ru/search/addr?q=Винница')
-        .then(function(response) {
-          response.json().then(function(data) {
-            console.log(data);
-          });
-        });
+      
+      var map;
+      var service;
+      var infowindow;
 
+      function getValue() {
+       const input = document.getElementById("input").value; 
+        var request = {
+          query: input,
+          fields: ['name', 'geometry'],
+        };
+
+        service = new google.maps.places.PlacesService(map);
+
+        service.findPlaceFromQuery(request, function(results, status) {
+          if (status === google.maps.places.PlacesServiceStatus.OK) {
+            for (var i = 0; i < results.length; i++) {
+              createMarker(results[i]);
+            }
+
+            map.setCenter(results[0].geometry.location);
+          }
+        });
+      }
 
       function initMap() {
-        var myLatLng = {lat: -25.363, lng: 131.044};
+        var sydney = new google.maps.LatLng(-33.867, 151.195);
 
-        var map = new google.maps.Map(document.getElementById('map'), {
-          zoom: 4,
-          center: myLatLng
+        infowindow = new google.maps.InfoWindow();
+
+        map = new google.maps.Map(
+            document.getElementById('map'), {center: sydney, zoom: 15});
+      }
+      
+
+      async function createMarker(place) {
+        var marker = new google.maps.Marker({
+          map: map,
+          position: place.geometry.location,
         });
 
-        var marker = new google.maps.Marker({
-          position: myLatLng,
-          map: map,
-          title: 'Hello World!'
+        const weather = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${place.name}&appid=1b5ee5a1a74d624a74750350327ea372`)
+        const weatherData = await weather.json()
+        console.log(weatherData)
+
+        google.maps.event.addListener(marker, 'click', function() {
+          infowindow.setContent(
+            `<div>Температура: ${weatherData.main.temp && weatherData.main.temp / 274,15} °C</div>` +
+            `<div>Вологість: ${weatherData.main.humidity && weatherData.main.humidity}%</div>` +
+            `<div>Тиск: ${weatherData.main.pressure && weatherData.main.pressure} Па</div>` 
+          );
+          infowindow.open(map, this);
         });
       }
     </script>
-    <script async defer
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDQPNIWtNw6MKEDSTn40c6RZboMDnQbyDA&callback=initMap">
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDQPNIWtNw6MKEDSTn40c6RZboMDnQbyDA&callback=initMap&libraries=places">
     </script>
   </body>
 </html>
